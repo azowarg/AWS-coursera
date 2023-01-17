@@ -5,7 +5,7 @@ provider "aws" {
 
 resource "aws_security_group" "app-sg" {
   name   = "app-sg"
-  vpc_id = var.default_vpc
+  vpc_id = aws_vpc.app-vpc.id
 
   ingress {
     from_port   = 80
@@ -15,8 +15,8 @@ resource "aws_security_group" "app-sg" {
   }
 
   ingress {
-    from_port   = 22
-    to_port     = 22
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -45,7 +45,7 @@ resource "aws_instance" "employee-directory-app" {
   instance_type               = "t2.micro"
   key_name                    = aws_key_pair.ian.key_name
   associate_public_ip_address = true
-  subnet_id                   = "subnet-02dee8d67d0436adb"
+  subnet_id                   = aws_subnet.subnets["Public Subnet 1"].id
   vpc_security_group_ids      = [aws_security_group.app-sg.id]
   iam_instance_profile        = "S3DynamoDBFullAccessRole"
   tags = {
@@ -53,7 +53,7 @@ resource "aws_instance" "employee-directory-app" {
   }
 
   user_data_replace_on_change = true
-  user_data = <<EOF
+  user_data                   = <<EOF
 #!/bin/bash
 wget https://aws-tc-largeobjects.s3-us-west-2.amazonaws.com/DEV-AWS-MO-GCNv2/FlaskApp.zip
 unzip FlaskApp.zip
@@ -70,5 +70,5 @@ EOF
 }
 
 output "ip_address" {
-  value = aws_instance.employee-directory-app[*].public_ip 
+  value = aws_instance.employee-directory-app[*].public_ip
 }
