@@ -3,9 +3,9 @@ provider "aws" {
   region  = "us-east-1"
 }
 
-resource "aws_security_group" "http_server_sg" {
-  name   = "http_server_sg"
-  vpc_id = "vpc-0473fc68d8d3a589f"
+resource "aws_security_group" "app-sg" {
+  name   = "app-sg"
+  vpc_id = var.default_vpc
 
   ingress {
     from_port   = 80
@@ -29,7 +29,7 @@ resource "aws_security_group" "http_server_sg" {
   }
 
   tags = {
-    name = "http_server_sg"
+    name = "app-sg"
   }
 
 }
@@ -46,30 +46,29 @@ resource "aws_instance" "employee-directory-app" {
   key_name                    = aws_key_pair.ian.key_name
   associate_public_ip_address = true
   subnet_id                   = "subnet-02dee8d67d0436adb"
-  vpc_security_group_ids      = [aws_security_group.http_server_sg.id]
-  iam_instance_profile = "S3DynamoDBFullAccessRole"
+  vpc_security_group_ids      = [aws_security_group.app-sg.id]
+  iam_instance_profile        = "S3DynamoDBFullAccessRole"
   tags = {
     "Name" = "employee-directory-app-${count.index}"
   }
-  connection {
-    type        = "ssh"
-    host        = self.public_ip
-    user        = "ec2-user"
-    private_key = file("/Users/user/.ssh/id_rsa")
-  }
 
-  provisioner "remote-exec" {
-    inline = [
-      "wget https://aws-tc-largeobjects.s3-us-west-2.amazonaws.com/DEV-AWS-MO-GCNv2/FlaskApp.zip",
-      "unzip FlaskApp.zip",
-      "cd FlaskApp/",
-      "yum -y install python3 mysql",
-      "pip3 install -r requirements.txt",
-      "amazon-linux-extras install epel",
-      "yum -y install stress",
-      "export AWS_DEFAULT_REGION=us-east-1",
-      "export DYNAMO_MODE=on",
-      "FLASK_APP=application.py /home/ec2-user/.local/bin/flask --host=0.0.0.0 --port=80"
-    ]
-  }
+  user_data_replace_on_change = true
+  user_data = <<EOF
+#!/bin/bash
+wget https://aws-tc-largeobjects.s3-us-west-2.amazonaws.com/DEV-AWS-MO-GCNv2/FlaskApp.zip
+unzip FlaskApp.zip
+cd FlaskApp/
+yum -y install python3 mysql
+pip3 install -r requirements.txt
+export PHOTOS_BUCKET="poka hernia"
+amazon-linux-extras install epel
+yum -y install stress
+export AWS_DEFAULT_REGION=us-east-1
+export DYNAMO_MODE=on
+FLASK_APP=application.py /usr/local/bin/flask run --host=0.0.0.0 --port=80
+EOF
+}
+
+output "ip_address" {
+  value = aws_instance.employee-directory-app[*].public_ip 
 }
