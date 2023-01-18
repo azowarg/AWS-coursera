@@ -34,8 +34,8 @@ resource "aws_subnet" "subnets" {
 resource "aws_route_table" "app-routetable-public" {
   vpc_id = aws_vpc.app-vpc.id
   route {
-    gateway_id                 = "${aws_internet_gateway.app-igw.id}"
-    cidr_block                 = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.app-igw.id
+    cidr_block = "0.0.0.0/0"
   }
   tags = {
     "Name" = "app-routetable-public"
